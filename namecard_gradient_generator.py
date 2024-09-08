@@ -219,32 +219,25 @@ def generate_gradient_from_colours(
   return gradients
 
 
-def main(*args) -> None:
+def generate_similar_colours(theme_colour: tuple, colours: list, top: int = 16):
   """
-  Main program function.
+  Generates a list of colours that are the closest to the provided theme colour.
   """
-  print(Back.BLUE + Fore.WHITE + "Welcome to the Genshin Namecard Gradient Generator" + Style.RESET_ALL)
 
-  print("Reading Webpage...")
-  namecard_page = get_url_contents(NAMECARD_URL)
-  print("Extracting element...")
-  nav_table = get_navigation_table(namecard_page)
-  print("Extracting images from element...")
-  namecard_urls = get_images_from_element(nav_table)
-  print("Loading images into memory...")
-  namecard_bin = load_images_to_dict(namecard_urls)
-  print()
+  colours.sort(key=lambda colour: colour_distance(theme_colour, colour))
 
-  print("Extracting dominant colours from images...")
-  # get the dominant colours from the image
-  dominant_colours_by_img = {
-    name: get_dominant_colours(namecard_bin[name], 1)[0]
-      for name in namecard_bin
-  }
-  
-  # print(dominant_colours_by_img)
+  # all the elements in the array
+  if len(colours) < top:
+    top = len(colours)
 
-  colours = list(dominant_colours_by_img.values())
+  return sorted(colours[:top], key=lambda colour: colour_distance((0,0,0), colour))
+
+
+
+def main_gradient(colours: list):
+  """
+  The coroutine for generating a gradient from 1 colour to another.
+  """
 
   start_colour = input(
     Fore.GREEN + Style.BRIGHT +
@@ -287,7 +280,90 @@ def main(*args) -> None:
   
   print(Back.CYAN + Style.BRIGHT + Fore.BLUE + "Resultant Gradient:" + Style.RESET_ALL)
 
-  for colour in gradient:
+  return gradient
+
+
+def main_similar(colours: list):
+  """
+  The coroutine for generating a list of namecards closest to a colour.
+  """
+
+  theme_colour = input(
+    Style.RESET_ALL + Fore.YELLOW + Style.BRIGHT +
+    "Enter theme colour: #" +
+    Style.NORMAL
+  )
+
+  top = int(input(
+    Fore.CYAN + Style.BRIGHT +
+    "Enter how many namecards you want: " +
+    Style.NORMAL
+  ))
+
+  print(Style.BRIGHT + Fore.BLUE + "Your Choices:")
+
+  print(
+    Style.NORMAL + Fore.BLACK + Back.WHITE + "Gradient Start Colour: " + 
+    formatted_colour(hex_code=theme_colour)
+  )
+
+  theme = hex_to_rgb_tuple(theme_colour)
+
+  cards = generate_similar_colours(theme, colours, top)
+
+  print()
+
+  print(Back.CYAN + Style.BRIGHT + Fore.BLUE + "Resultant Namecards:" + Style.RESET_ALL)
+
+  return cards
+
+
+
+
+def main(*args) -> None:
+  """
+  Main program function.
+  """
+  print(Back.BLUE + Fore.WHITE + "Welcome to the Genshin Namecard Gradient Generator" + Style.RESET_ALL)
+
+  print("Reading Webpage...")
+  namecard_page = get_url_contents(NAMECARD_URL)
+  print("Extracting element...")
+  nav_table = get_navigation_table(namecard_page)
+  print("Extracting images from element...")
+  namecard_urls = get_images_from_element(nav_table)
+  print("Loading images into memory...")
+  namecard_bin = load_images_to_dict(namecard_urls)
+  print()
+
+  print("Extracting dominant colours from images...")
+  # get the dominant colours from the image
+  dominant_colours_by_img = {
+    name: get_dominant_colours(namecard_bin[name], 1)[0]
+      for name in namecard_bin
+  }
+  
+  # print(dominant_colours_by_img)
+
+  colours = list(dominant_colours_by_img.values())
+
+  print(f"""{Style.BRIGHT + Fore.GREEN}Available modes:
+{Style.NORMAL+Fore.CYAN}  1. Similar Namecards
+{Style.NORMAL+Fore.BLUE}  2. Namecard Gradient
+{Style.NORMAL+Fore.RED}  q. Exit{Style.RESET_ALL}""")
+
+  mode = input(f"{Style.BRIGHT+Fore.BLUE}Select a mode: {Style.DIM}")
+  
+  if mode == "1":
+    result = main_similar(colours)
+  elif mode == "2":
+    result = main_gradient(colours)  
+  elif mode == "q":
+    exit(0)
+  else:
+    raise ValueError("Invalid mode!")
+
+  for colour in result:
     # print each colour in the gradient formatted
     print(
       "- " + formatted_colour(rgb_tuple=colour,
